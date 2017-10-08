@@ -10,9 +10,17 @@ use iron::modifiers::Redirect;
 
 use router::Router;
 
+extern crate tera;
+extern crate iron_tera;
+
 use iron_sessionstorage::traits::*;
 use iron_sessionstorage::SessionStorage;
 use iron_sessionstorage::backends::SignedCookieBackend;
+
+use tera::Context;
+use iron_tera::{Template, TeraEngine, TemplateMode};
+use std::error::Error;
+
 
 struct UserName {
     name: String
@@ -30,17 +38,21 @@ impl iron_sessionstorage::Value for UserName {
     }
 }
 
-/*
-fn set_name(req: &Request) {
-    let mut value = match try!(req.session().get::<UserId>()) {
-        Some(user_id)
+fn login_handler(req: &mut Request) -> IronResult<Response> {
+    let userName = req.session().get::<UserName>().ok().and_then(|x| x);
+    let name;
+    match userName {
+        Some(un) => { name = un.name }
+        None => { name = String::from("nobody") }
     }
+    let mut resp = Response::new();
+    let context = Context::new();
+    resp.set_mut(Template::new(
+        "login/login.html",
+        TemplateMode::from_context(context),
+    )).set_mut(status::Ok);
+    Ok(resp)
 }
-*/
-
-/*fn login_handler(req: &mut Request) -> IronResult<Response> {
-
-}*/
 
 fn top_handler(req: &mut Request) -> IronResult<Response> {
     let userName = req.session().get::<UserName>().ok().and_then(|x| x);
@@ -57,7 +69,10 @@ fn main() {
     let mysecret = b"foobar".to_vec();
     let mut router = Router::new();
     router.get("/", top_handler, "top_handler");
+    router.get("/login", login_handler, "login_handler");
     let mut ch = Chain::new(router);
+    let teng = TeraEngine::new("src/templates/**/*");
+    ch.link_after(teng);
     ch.link_around(SessionStorage::new(SignedCookieBackend::new(mysecret)));
     let _res = Iron::new(ch).http("localhost:8080");
 }

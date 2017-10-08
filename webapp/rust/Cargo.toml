@@ -10,6 +10,7 @@ router = "*"
 serde_derive = "1.0"
 serde_json = "1.0"
 tera = "0.10.10"
+iron-tera = "0.4.0"
 
 [dependencies.iron]
 version = "*"
